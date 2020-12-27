@@ -278,6 +278,19 @@ type RunnerEvent struct {
 	RepoFullName string `json:"repo_fullname"`
 	Token        string `json:"token"`
 	VirtualID    string `json:"virtual_id"`
+	Event        string `json:"event"`
+}
+
+func TriggerRunner(payloadEvent RunnerEvent) error {
+	sess := session.Must(session.NewSessionWithOptions(session.Options{
+		SharedConfigState: session.SharedConfigEnable,
+	}))
+
+	payload, _ := json.Marshal(&payloadEvent)
+
+	client := lmbda.New(sess, &aws.Config{Region: aws.String("us-east-1")})
+	_, err := client.Invoke(&lmbda.InvokeInput{FunctionName: aws.String("lambda-github-runner"), InvocationType: aws.String("Event"), Payload: payload})
+	return err
 }
 
 // HandleRequest handles Lambda Request
@@ -287,8 +300,8 @@ func HandleRequest(ctx context.Context, req events.APIGatewayProxyRequest) (even
 	fmt.Printf("Delivery ID - %s\n", deliveryID)
 	fmt.Printf("Event - %s\n", req.Headers["X-GitHub-Event"])
 
-	// Only care about "check_run" events
-	if req.Headers["X-GitHub-Event"] != "check_run" {
+	// Only care about "check_run"/"ping" events
+	if req.Headers["X-GitHub-Event"] != "check_run" && req.Headers["X-GitHub-Event"] != "ping" {
 		return events.APIGatewayProxyResponse{StatusCode: 404}, nil
 	}
 
@@ -322,29 +335,44 @@ func HandleRequest(ctx context.Context, req events.APIGatewayProxyRequest) (even
 		return events.APIGatewayProxyResponse{StatusCode: 400, Body: "No SQS Queue URL is configured"}, nil
 	}
 
-	if data.Action == "created" || data.Action == "rerequested" {
+	// If ping, send different event
+	if req.Headers["X-GitHub-Event"] == "ping" {
 		// Create new lambda
-		sess := session.Must(session.NewSessionWithOptions(session.Options{
-			SharedConfigState: session.SharedConfigEnable,
-		}))
-
 		payloadEvent := RunnerEvent{
 			QueueURL:     queueURL + "#" + virtualQueue,
 			RepoURL:      data.Repository.HTMLURL,
 			RepoFullName: data.Repository.FullName,
 			Token:        os.Getenv("GITHUB_TOKEN"),
 			VirtualID:    virtualQueue,
+			Event:        "create",
 		}
-		payload, _ := json.Marshal(&payloadEvent)
 
-		client := lmbda.New(sess, &aws.Config{Region: aws.String("us-east-1")})
-		lr, err := client.Invoke(&lmbda.InvokeInput{FunctionName: aws.String("lambda-github-runner"), InvocationType: aws.String("Event"), Payload: payload})
+		err := TriggerRunner(payloadEvent)
 		if err != nil {
 			fmt.Println("Error calling lambda-github-runner", err)
 			return events.APIGatewayProxyResponse{StatusCode: 400, Body: "Unable to start runner"}, nil
 		}
-		fmt.Println("lambda-github-runner called")
-		fmt.Println(lr)
+		fmt.Println("lambda-github-runner triggered")
+		return events.APIGatewayProxyResponse{StatusCode: 200, Body: "Setting up default runner"}, nil
+	}
+
+	if data.Action == "created" || data.Action == "rerequested" {
+		// Create new lambda
+		payloadEvent := RunnerEvent{
+			QueueURL:     queueURL + "#" + virtualQueue,
+			RepoURL:      data.Repository.HTMLURL,
+			RepoFullName: data.Repository.FullName,
+			Token:        os.Getenv("GITHUB_TOKEN"),
+			VirtualID:    virtualQueue,
+			Event:        "default",
+		}
+
+		err := TriggerRunner(payloadEvent)
+		if err != nil {
+			fmt.Println("Error calling lambda-github-runner", err)
+			return events.APIGatewayProxyResponse{StatusCode: 400, Body: "Unable to start runner"}, nil
+		}
+		fmt.Println("lambda-github-runner triggered")
 	} else if data.Action == "completed" {
 		// Stop lambda
 		sess := session.Must(session.NewSessionWithOptions(session.Options{

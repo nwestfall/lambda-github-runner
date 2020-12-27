@@ -27,6 +27,7 @@ type RunnerEvent struct {
 	RepoFullName string `json:"repo_fullname"`
 	Token        string `json:"token"`
 	VirtualID    string `json:"virtual_id"`
+	Event        string `json:"event"`
 }
 
 // RunnerToken is the token used for the github runner
@@ -81,7 +82,12 @@ func HandleRequest(ctx context.Context, event RunnerEvent) (string, error) {
 	err = os.Mkdir("/tmp/toolcache", 0755)
 
 	fmt.Printf("Configuring runner (Request: %s|RepoUrl: %s|RepoFullName: %s|QueueUrl: %s)...\n", lc.AwsRequestID, event.RepoURL, event.RepoFullName, event.QueueURL)
-	configcmd := exec.Command("/tmp/runner/config.sh", "--url", event.RepoURL, "--token", regToken.Token, "--name", "lambda-"+lc.AwsRequestID, "--runnergroup", "lambda", "--labels", "lambda", "--work", "_work", "--replace")
+	runnerName := "lambda-" + lc.AwsRequestID
+	if event.Event == "create" {
+		runnerName = "DEFAULT-LAMBDA-DO-NOT-REMOVE"
+	}
+
+	configcmd := exec.Command("/tmp/runner/config.sh", "--url", event.RepoURL, "--token", regToken.Token, "--name", runnerName, "--runnergroup", "lambda", "--labels", "lambda", "--work", "_work", "--replace")
 	out, err := configcmd.Output()
 	if err != nil {
 		fmt.Println(string(out), err)
@@ -91,6 +97,13 @@ func HandleRequest(ctx context.Context, event RunnerEvent) (string, error) {
 	if os.Getenv("ALWAYS_PRINT_LOGS") == "true" {
 		readRunnerLogs()
 	}
+
+	// if event is 'created', bail after configured
+	if event.Event == "create" {
+		fmt.Println("This is a create event, stopping runner")
+		return fmt.Sprint("Runner created"), nil
+	}
+
 	fmt.Println("Starting runner...")
 	err = startRunner()
 	if err != nil {
