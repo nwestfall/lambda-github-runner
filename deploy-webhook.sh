@@ -1,4 +1,7 @@
-GOOS=linux go build src/lambda-github-webhook/main.go
+cd src/lambda-github-webhook
+go mod download
+GOOS=linux go build -o ../../main
+cd ../../
 zip function-webhook.zip main
 
 echo "Updating Webhook"
