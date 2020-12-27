@@ -1,0 +1,78 @@
+{
+    // See https://go.microsoft.com/fwlink/?LinkId=733558
+    // for the documentation about the tasks.json format
+    "version": "2.0.0",
+    "tasks": [
+        {
+            "label": "Build Base Runner Image",
+            "type": "shell",
+            "command": "docker",
+            "args": [
+                "build",
+                "--pull",
+                "--rm",
+                "-f",
+                "src/lambda-github-runner/Dockerfile.base",
+                "-t",
+                "lambda-github-runner-base:latest",
+                "src/lambda-github-runner"
+            ]
+        },
+        {
+            "label": "Get AWS Lambda Container",
+            "type": "shell",
+            "command": "docker",
+            "args": [
+                "pull",
+                "public.ecr.aws/lambda/provided:al2"
+            ]
+        },
+        {
+            "label": "Build Runner Image",
+            "type": "shell",
+            "command": "docker",
+            "args": [
+                "build",
+                "--rm",
+                "-f",
+                "src/lambda-github-runner/Dockerfile",
+                "-t",
+                "lambda-github-runner:latest",
+                "src/lambda-github-runner"
+            ],
+            "dependsOn": [
+                "Get AWS Lambda Container",
+                "Build Base Runner Image"
+            ]
+        },
+        {
+            "label": "Get Webhook Mods",
+            "type": "shell",
+            "command": "go",
+            "args": [
+                "mod",
+                "download"
+            ],
+            "options": {
+                "cwd": "src/lambda-github-webhook"
+            }
+        },
+        {
+            "label": "Build Webhook",
+            "type": "shell",
+            "command": "go",
+            "args": [
+                "build"
+            ],
+            "options": {
+                "env": {
+                    "GOOS": "linux"
+                },
+                "cwd": "src/lambda-github-webhook"
+            },
+            "dependsOn": [
+                "Get Webhook Mods"
+            ]
+        }
+    ]
+}
