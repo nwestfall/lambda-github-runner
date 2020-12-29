@@ -49,3 +49,7 @@ override.tf.json
 .terraformrc
 terraform.rc
 src/lambda-github-webhook/lambda-github-webhook
+deploy/.terraform.lock.hcl
+deploy/runner_module/.terraform.lock.hcl
+deploy/webhook_module/.terraform.lock.hcl
+files/
