@@ -81,10 +81,17 @@ func HandleRequest(ctx context.Context, event RunnerEvent) (string, error) {
 	}
 	err = os.Mkdir("/tmp/toolcache", 0755)
 
+	fmt.Println("Removing runner in case one already exists")
+	err = stopAndDecomissionRunner(regToken)
+	if err != nil {
+		fmt.Printf("Unable to remove runner, going to continue anyway\n", err)
+	}
+
 	fmt.Printf("Configuring runner (Request: %s|RepoUrl: %s|RepoFullName: %s|QueueUrl: %s)...\n", lc.AwsRequestID, event.RepoURL, event.RepoFullName, event.QueueURL)
 	runnerName := "lambda-" + lc.AwsRequestID
 	if event.Event == "create" {
 		runnerName = "DEFAULT-LAMBDA-DO-NOT-REMOVE"
+		fmt.Println("Creating default runner")
 	}
 
 	configcmd := exec.Command("/tmp/runner/config.sh", "--url", event.RepoURL, "--token", regToken.Token, "--name", runnerName, "--runnergroup", "lambda", "--labels", "lambda", "--work", "_work", "--replace")
