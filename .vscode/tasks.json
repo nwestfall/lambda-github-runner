@@ -16,7 +16,8 @@
                 "-t",
                 "lambda-github-runner-base:latest",
                 "src/lambda-github-runner"
-            ]
+            ],
+            "problemMatcher": []
         },
         {
             "label": "Get AWS Lambda Container",
@@ -25,7 +26,8 @@
             "args": [
                 "pull",
                 "public.ecr.aws/lambda/provided:al2"
-            ]
+            ],
+            "problemMatcher": []
         },
         {
             "label": "Build Runner Image",
@@ -43,7 +45,8 @@
             "dependsOn": [
                 "Get AWS Lambda Container",
                 "Build Base Runner Image"
-            ]
+            ],
+            "problemMatcher": []
         },
         {
             "label": "Get Webhook Mods",
@@ -55,7 +58,8 @@
             ],
             "options": {
                 "cwd": "src/lambda-github-webhook"
-            }
+            },
+            "problemMatcher": []
         },
         {
             "label": "Build Webhook",
@@ -72,7 +76,59 @@
             },
             "dependsOn": [
                 "Get Webhook Mods"
-            ]
+            ],
+            "problemMatcher": []
+        },
+        {
+            "label": "Validate Terraform",
+            "type": "shell",
+            "command": "terraform",
+            "args": [
+                "validate"
+            ],
+            "options": {
+                "cwd": "deploy"
+            },
+            "problemMatcher": []
+        },
+        {
+            "label": "Plan Terraform",
+            "type": "shell",
+            "command": "terraform",
+            "args": [
+                "plan",
+                "-var-file=.tfvars"
+            ],
+            "options": {
+                "cwd": "deploy"
+            },
+            "problemMatcher": []
+        },
+        {
+            "label": "Destroy Terraform",
+            "type": "shell",
+            "command": "terraform",
+            "args": [
+                "destroy",
+                "-var-file:.tfvars"
+            ],
+            "options": {
+                "cwd": "deploy"
+            },
+            "problemMatcher": []
+        },
+        {
+            "label": "Apply Terraform",
+            "type": "shell",
+            "command": "terraform",
+            "args": [
+                "apply",
+                "-var-file:.tfvars"
+            ],
+            "options": {
+                "cwd": "deploy"
+            },
+            "problemMatcher": []
         }
     ]
 }
