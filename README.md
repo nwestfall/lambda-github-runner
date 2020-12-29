@@ -23,6 +23,8 @@ Using GitHub webhooks, we listen for the `check_run` event and then start up a r
 
 Using the lifecycle of an action and the `check_run` webhook, we are able to dynamically add/remove self-hosted runners from GitHub as they are needed.
 
+See working example - https://github.com/nwestfall/lambda-runner-test/actions
+
 ## Deployment Overview
 ![Deployment Diagram](deployment.drawio.svg)
 
